@@ -1,4 +1,4 @@
-namespace HevyMcp.Server;
+namespace HevyMcp.Server.Tools;
 
 using System.ComponentModel;
 using ModelContextProtocol.Server;
