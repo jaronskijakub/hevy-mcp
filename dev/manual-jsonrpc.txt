@@ -1,0 +1,15 @@
+# Paste these one at a time into the Rider Debug > Console tab
+# (or into `dotnet run --project src/HevyMcp.Server`), Enter after each.
+# Change the exerciseName in the last line to whatever you want to test.
+
+{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"manual","version":"1.0"}}}
+
+{"jsonrpc":"2.0","method":"notifications/initialized"}
+
+{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"get_exercise_progress","arguments":{"exerciseName":"Dumbbell Row"}}}
+
+# Other useful calls:
+
+{"jsonrpc":"2.0","id":3,"method":"tools/list"}
+
+{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"hevy_ping","arguments":{}}}

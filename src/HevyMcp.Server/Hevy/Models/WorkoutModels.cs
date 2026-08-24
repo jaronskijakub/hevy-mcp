@@ -1,4 +1,4 @@
-namespace HevyMcp.Server.Hevy;
+namespace HevyMcp.Server.Hevy.Models;
 
 public record WorkoutsPage(
     int Page,

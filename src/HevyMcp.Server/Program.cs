@@ -1,4 +1,4 @@
-﻿using HevyMcp.Server.Hevy;
+﻿using HevyMcp.Server.Hevy.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -25,5 +25,7 @@ builder.Services
     .AddMcpServer()
     .WithStdioServerTransport()
     .WithToolsFromAssembly();
+
+builder.Services.AddSingleton<ExerciseCatalog>();
 
 await builder.Build().RunAsync();
