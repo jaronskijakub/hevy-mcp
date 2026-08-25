@@ -27,5 +27,6 @@ builder.Services
     .WithToolsFromAssembly();
 
 builder.Services.AddSingleton<ExerciseCatalog>();
+builder.Services.AddSingleton<PerformedExercises>();
 
 await builder.Build().RunAsync();

@@ -1,3 +1,5 @@
+namespace HevyMcp.Server.Tools.Models;
+
 public record ExerciseProgress(
     string Exercise,
     int Sessions,
@@ -5,4 +7,6 @@ public record ExerciseProgress(
     DateTimeOffset To,
     double FirstE1Rm,
     double LastE1Rm,
-    double KgPerMonth);
+    double KgPerMonth,
+    int RecentSessions,
+    double? RecentKgPerMonth);
