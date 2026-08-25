@@ -15,7 +15,7 @@ claude  "Yes, and the pace held steady through the summer."
 
 | | |
 |---|---|
-| Hevy Pro | The API key lives behind the Developer section, which Hevy ships to Pro subscribers |
+| Hevy Pro | Hevy issues API keys to Pro subscribers only |
 | .NET 10 SDK | I build and run it on 10.0.301 |
 | An MCP client | Claude Code, or another client that speaks MCP over stdio |
 
@@ -29,7 +29,7 @@ cd hevy-mcp
 dotnet build
 ```
 
-Open the Hevy app, go to **Settings > Developer**, and generate an API key. Store it with .NET user secrets:
+Generate an API key at [hevy.com/settings?developer](https://hevy.com/settings?developer). Store it with .NET user secrets:
 
 ```bash
 dotnet user-secrets set "Hevy:ApiKey" "<your-key>" --project src/HevyMcp.Server
@@ -207,6 +207,10 @@ Hevy/       API client, response models, in-memory caches.
 - `get_training_gaps`: exercises you have dropped, ranked by how long they have been missing
 - Exclude exercises from today's routine when suggesting alternatives
 - HTTP transport plus hosting, so the tools work from the Claude mobile app
+
+## Disclaimer
+
+I am not affiliated with Hevy. This project calls the public Hevy API and ships no Hevy code or data. Hevy is a trademark of its owners.
 
 ## License
 
