@@ -21,6 +21,16 @@ public class HevyClient(HttpClient http)
                    $"Hevy returned no data for {url}");
     }
 
+    public async Task<RoutinesPage> GetRoutinePageAsync(int page, int pageSize)
+    {
+        var url = $"routines?page={page}&pageSize={pageSize}";
+        var result = await http.GetFromJsonAsync<RoutinesPage>(url, JsonOptions);
+
+        return result
+               ?? throw new InvalidOperationException(
+                   $"Hevy returned no data for {url}");
+    }
+
     public async Task<ExerciseHistoryResponse> GetExerciseHistoryAsync(string exerciseTemplateId,
         DateTimeOffset? startDate = null)
     {

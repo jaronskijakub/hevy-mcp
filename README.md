@@ -1,14 +1,14 @@
 # hevy-mcp
 
-An MCP server that computes strength analytics from your Hevy training log and hands Claude the numbers.
+An MCP server that computes strength analytics from your Hevy training log and hands an AI assistant the numbers.
 
-Claude can already read the Hevy API. It cannot fit a regression across 273 workouts and 5000 sets. Ask it to judge your progress from raw JSON and it will produce a plausible figure it never computed. The server runs that arithmetic in C# and returns figures you can check against your log.
+An AI assistant can read the Hevy API, but it cannot reliably fit a regression across 273 workouts and 5000 sets from raw JSON. Ask it to judge your progress directly and it may produce a plausible figure it never computed. The server runs that arithmetic in C# and returns figures you can check against your log.
 
 ```
 you    "am I making progress on Dumbbell Row?"
-claude  get_exercise_progress("Dumbbell Row")
+client  get_exercise_progress("Dumbbell Row")
 server  20 sessions, e1RM 19.0 -> 36.4 kg, +2.11 kg/month, +1.92 over the last 3 months
-claude  "Yes, and the pace held steady through the summer."
+client  "Yes, and the pace held steady through the summer."
 ```
 
 ## Requirements
@@ -17,7 +17,7 @@ claude  "Yes, and the pace held steady through the summer."
 |---|---|
 | Hevy Pro | Hevy issues API keys to Pro subscribers only |
 | .NET 10 SDK | I build and run it on 10.0.301 |
-| An MCP client | Claude Code, or another client that speaks MCP over stdio |
+| An MCP client | Claude Code, Codex, or another client that speaks MCP over stdio |
 
 ## Setup
 
@@ -43,20 +43,32 @@ The key lands in `~/.microsoft/usersecrets/<UserSecretsId>/secrets.json`, outsid
 builder.Configuration.AddUserSecrets<Program>();
 ```
 
-Publish and register with Claude Code:
+Publish the server:
 
 ```bash
 dotnet publish src/HevyMcp.Server -c Release -o publish
+```
+
+Register it with Claude Code:
+
+```bash
 claude mcp add hevy --scope user -- dotnet "$(pwd)/publish/HevyMcp.Server.dll"
 ```
 
-Check the connection:
+Or register it with Codex:
+
+```bash
+codex mcp add hevy -- dotnet "$(pwd)/publish/HevyMcp.Server.dll"
+```
+
+Check the connection with the matching client:
 
 ```bash
 claude mcp list
+codex mcp list
 ```
 
-Then restart Claude Code and ask it whether the hevy server is alive. It should call `hevy_ping` and get 42 back.
+Then restart the client and ask whether the hevy server is alive. It should call `hevy_ping` and get 42 back. Codex CLI, the Codex IDE extension, and the ChatGPT desktop app share the same Codex MCP configuration.
 
 While you develop, point the client at `dotnet run --project src/HevyMcp.Server`. MSBuild writes to stdout on the first build of a session and corrupts the protocol stream, so publish before you register the server for daily use.
 
@@ -66,7 +78,8 @@ While you develop, point the client at `dotnet run --project src/HevyMcp.Server`
 |---|---|
 | `get_exercise_catalog` | Exercises you have logged, with session counts and the last date you trained them |
 | `get_exercise_progress` | Two estimated-1RM slopes in kg per month, plus the first and last estimate |
-| `get_exercise_alternatives` | Substitutes that hit the same muscle with different equipment |
+| `get_routines_for_exercise` | Saved routines containing an exercise, including every exercise in each routine |
+| `get_exercise_alternatives` | Substitutes that hit the same muscle with different equipment and can exclude today's routine |
 | `hevy_ping` | Health check |
 
 ### get_exercise_catalog
@@ -85,7 +98,7 @@ get_exercise_catalog("row")
 ]
 ```
 
-`get_exercise_progress` matches titles character for character, so Claude calls the catalog first whenever it lacks the exact name. Without it, the model guesses `"Row"` and gets back an error it cannot act on.
+`get_exercise_progress` matches titles character for character, so the assistant calls the catalog first whenever it lacks the exact name. Without it, the model guesses `"Row"` and gets back an error it cannot act on.
 
 ### get_exercise_progress
 
@@ -114,7 +127,8 @@ The tool description tells the model to report these two windows and no others, 
 ### get_exercise_alternatives
 
 ```
-get_exercise_alternatives("Chest Fly (Machine)")
+get_routines_for_exercise("Chest Fly (Machine)")
+get_exercise_alternatives("Chest Fly (Machine)", "<confirmed-routine-id>")
 ```
 
 ```json
@@ -128,7 +142,9 @@ get_exercise_alternatives("Chest Fly (Machine)")
 }
 ```
 
-Same primary muscle, different equipment, same exercise type. The server sorts exercises you already train to the top, and `sessions: 0` marks the ones you have never tried.
+The assistant first finds the saved routines containing the exercise and asks which one you are doing today. Even a single match needs confirmation because you may be training outside that plan. Once confirmed, it passes the routine id to `get_exercise_alternatives`, and the server excludes every exercise in that routine, including exercises you have not performed yet. If no routine matches or you are training outside a saved routine, the assistant omits the id and makes clear that today's plan was not taken into account.
+
+Among the remaining candidates, the server selects the same primary muscle, different equipment, and the same exercise type. It sorts exercises you already train to the top, and `sessions: 0` marks the ones you have never tried. If the routine excludes every suitable candidate, the tool returns `None` with an empty list instead of restoring a planned exercise.
 
 `match` reports how the server found them:
 
@@ -142,11 +158,11 @@ Same primary muscle, different equipment, same exercise type. The server sorts e
 
 **"What do I train?"**
 
-Claude calls the catalog with no filter and gets your whole logged history back, sorted by frequency. It can spot that you did Face Pull once in February and dropped it.
+The assistant calls the catalog with no filter and gets your whole logged history back, sorted by frequency. It can spot that you did Face Pull once in February and dropped it.
 
 **"The Chest Fly machine is taken, what else can I do?"**
 
-Claude makes one call to `get_exercise_alternatives("Chest Fly (Machine)")` and answers:
+The assistant calls `get_routines_for_exercise("Chest Fly (Machine)")`, asks you to confirm today's routine, then calls `get_exercise_alternatives` with its id. Its answer excludes exercises already scheduled for that workout:
 
 > Exercises you have done before (you know these best):
 >
@@ -167,7 +183,7 @@ I asked in Polish. The tool descriptions stay in English and the model bridges t
 
 **"Compare my three rowing variations."**
 
-Claude calls the catalog once and `get_exercise_progress` three times, then lays the slopes side by side:
+The assistant calls the catalog once and `get_exercise_progress` three times, then lays the slopes side by side:
 
 | Exercise | Sessions | e1RM | All time | Last 3 months |
 |---|---|---|---|---|
@@ -191,7 +207,7 @@ Hevy/       API client, response models, in-memory caches.
 
 **Trend.** Least squares over `(days since first session, e1RM)`, reported per 30 days. The fit weights each session by its distance from the middle of the period, so one bad Tuesday shifts the line a little while a slump in the closing weeks pulls it down.
 
-**Caching.** The exercise catalog costs 5 requests and your workout history costs about 28. Both load once per process behind a `SemaphoreSlim`, so three parallel tool calls trigger one fetch.
+**Caching.** The exercise catalog costs 5 requests, your workout history costs about 28, and saved routines may span several pages. All three load once per process behind a `SemaphoreSlim`, so parallel tool calls trigger one fetch per data source. Restart the server after changing a saved routine in Hevy.
 
 ## Known limitations
 
@@ -204,9 +220,8 @@ Hevy/       API client, response models, in-memory caches.
 
 ## Roadmap
 
+- Deploy the server with Streamable HTTP transport and authentication so you can use it from Claude Mobile or another remote MCP client at the gym without keeping a local agent session running on a computer.
 - `get_training_gaps`: exercises you have dropped, ranked by how long they have been missing
-- Exclude exercises from today's routine when suggesting alternatives
-- HTTP transport plus hosting, so the tools work from the Claude mobile app
 
 ## Disclaimer
 

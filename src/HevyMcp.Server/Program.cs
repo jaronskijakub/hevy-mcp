@@ -28,5 +28,6 @@ builder.Services
 
 builder.Services.AddSingleton<ExerciseCatalog>();
 builder.Services.AddSingleton<PerformedExercises>();
+builder.Services.AddSingleton<SavedRoutines>();
 
 await builder.Build().RunAsync();
